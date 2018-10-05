@@ -36,6 +36,7 @@
 
 #endif
 
+#include <math.h>
 #include <signal.h>
 
 #include "crypto/CryptoNight.h"
@@ -850,11 +851,11 @@ public:
                 ax[hashBlock] = _mm_set_epi64x(ah[hashBlock], al[hashBlock]);
 
                 if (SOFT_AES) {
-                    cx = soft_aesenc((uint32_t *) &l[hashBlock][idx[hashBlock] & MASK],
+                    cx[hashBlock] = soft_aesenc((uint32_t *) &l[hashBlock][idx[hashBlock] & MASK],
                                      _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
                 } else {
-                    cx = _mm_load_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK]);
-                    cx = _mm_aesenc_si128(cx, _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = _mm_load_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK]);
+                    cx[hashBlock] = _mm_aesenc_si128(cx[hashBlock], _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
                 }
             }
 
