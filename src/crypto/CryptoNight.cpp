@@ -333,7 +333,7 @@ bool CryptoNight::selfTest(int algo)
         #endif
 
     } else {
-        // cn v0
+        // cn v0 aka orignal
 
         cryptonight_hash_ctx[0](PowVariant::POW_V0,test_input, 76, output, scratchPads);
         result = result && memcmp(output, test_output_v0, 32) == 0;
@@ -358,7 +358,7 @@ bool CryptoNight::selfTest(int algo)
         result = result && memcmp(output, test_output_v0, 160) == 0;
         #endif
 
-        // cn v7
+        // cn v7 aka cnv1
 
         cryptonight_hash_ctx[0](PowVariant::POW_V1, test_input, 76, output, scratchPads);
         result = result && memcmp(output, test_output_v1, 32) == 0;
@@ -383,7 +383,7 @@ bool CryptoNight::selfTest(int algo)
         result = result && memcmp(output, test_output_v1, 160) == 0;
         #endif
 
-        // cn xtl
+        // cn v7 + xtl
 
         cryptonight_hash_ctx[0](PowVariant::POW_XTL,test_input, 76, output, scratchPads);
         result = result && memcmp(output, test_output_xtl, 32) == 0;
@@ -406,6 +406,31 @@ bool CryptoNight::selfTest(int algo)
         #if MAX_NUM_HASH_BLOCKS > 4
         cryptonight_hash_ctx[4](PowVariant::POW_XTL, test_input, 76, output, scratchPads);
         result = result && memcmp(output, test_output_xtl, 160) == 0;
+        #endif
+
+        // cn v8 aka cnv2
+
+        cryptonight_hash_ctx[0](PowVariant::POW_V2, test_input, 76, output, scratchPads);
+        result = result && memcmp(output, test_output_v2, 32) == 0;
+
+        #if MAX_NUM_HASH_BLOCKS > 1
+        cryptonight_hash_ctx[1](PowVariant::POW_V2, test_input, 76, output, scratchPads);
+        result = result && memcmp(output, test_output_v2, 64) == 0;
+        #endif
+
+        #if MAX_NUM_HASH_BLOCKS > 2
+        cryptonight_hash_ctx[2](PowVariant::POW_V2, test_input, 76, output, scratchPads);
+        result = result && memcmp(output, test_output_v2, 96) == 0;
+        #endif
+
+        #if MAX_NUM_HASH_BLOCKS > 3
+        cryptonight_hash_ctx[3](PowVariant::POW_V2, test_input, 76, output, scratchPads);
+        result = result && memcmp(output, test_output_v2, 128) == 0;
+        #endif
+
+        #if MAX_NUM_HASH_BLOCKS > 4
+        cryptonight_hash_ctx[4](PowVariant::POW_V2, test_input, 76, output, scratchPads);
+        result = result && memcmp(output, test_output_v2, 160) == 0;
         #endif
     }
 
