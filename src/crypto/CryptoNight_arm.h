@@ -111,41 +111,41 @@ static inline __attribute__((always_inline)) uint64_t _mm_cvtsi128_si64(__m128i 
 #define EXTRACT64(X) _mm_cvtsi128_si64(X)
 
 
-# define SHUFFLE_PHASE_1(l, idx_, bx0, bx1, ax) \
+# define SHUFFLE_PHASE_1(l, idx, bx0, bx1, ax) \
 { \
-    const uint64x2_t chunk1 = vld1q_u64((uint64_t*)((l) + ((idx_) ^ 0x10))); \
-    const uint64x2_t chunk2 = vld1q_u64((uint64_t*)((l) + ((idx_) ^ 0x20))); \
-    const uint64x2_t chunk3 = vld1q_u64((uint64_t*)((l) + ((idx_) ^ 0x30))); \
-    vst1q_u64((uint64_t*)((l) + ((idx_) ^ 0x10)), vaddq_u64(chunk3, vreinterpretq_u64_u8(bx1))); \
-    vst1q_u64((uint64_t*)((l) + ((idx_) ^ 0x20)), vaddq_u64(chunk1, vreinterpretq_u64_u8(bx0))); \
-    vst1q_u64((uint64_t*)((l) + ((idx_) ^ 0x30)), vaddq_u64(chunk2, vreinterpretq_u64_u8(ax))); \
+    const uint64x2_t chunk1 = vld1q_u64((uint64_t*)((l) + ((idx) ^ 0x10))); \
+    const uint64x2_t chunk2 = vld1q_u64((uint64_t*)((l) + ((idx) ^ 0x20))); \
+    const uint64x2_t chunk3 = vld1q_u64((uint64_t*)((l) + ((idx) ^ 0x30))); \
+    vst1q_u64((uint64_t*)((l) + ((idx) ^ 0x10)), vaddq_u64(chunk3, vreinterpretq_u64_u8(bx1))); \
+    vst1q_u64((uint64_t*)((l) + ((idx) ^ 0x20)), vaddq_u64(chunk1, vreinterpretq_u64_u8(bx0))); \
+    vst1q_u64((uint64_t*)((l) + ((idx) ^ 0x30)), vaddq_u64(chunk2, vreinterpretq_u64_u8(ax))); \
 }
 
 # define INTEGER_MATH_V2(idx, cl, cx) \
 { \
     const uint64_t cx_0 = _mm_cvtsi128_si64(cx); \
-    cl ^= division_result_##idx ^ (sqrt_result_##idx << 32); \
-    const uint32_t d = static_cast<uint32_t>(cx_0 + (sqrt_result_##idx << 1)) | 0x80000001UL; \
+    cl ^= division_result_xmm##idx ^ (sqrt_result##idx << 32); \
+    const uint32_t d = static_cast<uint32_t>(cx_0 + (sqrt_result##idx << 1)) | 0x80000001UL; \
     const uint64_t cx_1 = _mm_cvtsi128_si64(_mm_srli_si128(cx, 8)); \
-    division_result_##idx = static_cast<uint32_t>(cx_1 / d) + ((cx_1 % d) << 32); \
-    const uint64_t sqrt_input = cx_0 + division_result_##idx; \
-    sqrt_result_##idx = sqrt(sqrt_input + 18446744073709551616.0) * 2.0 - 8589934592.0; \
-    const uint64_t s = sqrt_result_##idx >> 1; \
-    const uint64_t b = sqrt_result_##idx & 1; \
-    const uint64_t r2 = (uint64_t)(s) * (s + b) + (sqrt_result_##idx << 32); \
-    sqrt_result_##idx += ((r2 + b > sqrt_input) ? -1 : 0) + ((r2 + (1ULL << 32) < sqrt_input - s) ? 1 : 0); \
+    division_result_xmm##idx = static_cast<uint32_t>(cx_1 / d) + ((cx_1 % d) << 32); \
+    const uint64_t sqrt_input = cx_0 + division_result_xmm##idx; \
+    sqrt_result##idx = sqrt(sqrt_input + 18446744073709551616.0) * 2.0 - 8589934592.0; \
+    const uint64_t s = sqrt_result##idx >> 1; \
+    const uint64_t b = sqrt_result##idx & 1; \
+    const uint64_t r2 = (uint64_t)(s) * (s + b) + (sqrt_result##idx << 32); \
+    sqrt_result##idx += ((r2 + b > sqrt_input) ? -1 : 0) + ((r2 + (1ULL << 32) < sqrt_input - s) ? 1 : 0); \
 }
 
 # define SHUFFLE_PHASE_2(l, idx, bx0, bx1, ax, lo, hi) \
 { \
-    const uint64x2_t chunk1 = veorq_u64(vld1q_u64((uint64_t*)((l) + ((idx_) ^ 0x10))), vcombine_u64(vcreate_u64(hi), vcreate_u64(lo))); \
-    const uint64x2_t chunk2 = vld1q_u64((uint64_t*)((l) + ((idx_) ^ 0x20))); \
-    const uint64x2_t chunk3 = vld1q_u64((uint64_t*)((l) + ((idx_) ^ 0x30))); \
-    hi ^= ((uint64_t*)((l) + ((idx_) ^ 0x20)))[0]; \
-    lo ^= ((uint64_t*)((l) + ((idx_) ^ 0x20)))[1]; \
-    vst1q_u64((uint64_t*)((l) + ((idx_) ^ 0x10)), vaddq_u64(chunk3, vreinterpretq_u64_u8(bx1))); \
-    vst1q_u64((uint64_t*)((l) + ((idx_) ^ 0x20)), vaddq_u64(chunk1, vreinterpretq_u64_u8(bx0))); \
-    vst1q_u64((uint64_t*)((l) + ((idx_) ^ 0x30)), vaddq_u64(chunk2, vreinterpretq_u64_u8(ax))); \
+    const uint64x2_t chunk1 = veorq_u64(vld1q_u64((uint64_t*)((l) + ((idx) ^ 0x10))), vcombine_u64(vcreate_u64(hi), vcreate_u64(lo))); \
+    const uint64x2_t chunk2 = vld1q_u64((uint64_t*)((l) + ((idx) ^ 0x20))); \
+    const uint64x2_t chunk3 = vld1q_u64((uint64_t*)((l) + ((idx) ^ 0x30))); \
+    hi ^= ((uint64_t*)((l) + ((idx) ^ 0x20)))[0]; \
+    lo ^= ((uint64_t*)((l) + ((idx) ^ 0x20)))[1]; \
+    vst1q_u64((uint64_t*)((l) + ((idx) ^ 0x10)), vaddq_u64(chunk3, vreinterpretq_u64_u8(bx1))); \
+    vst1q_u64((uint64_t*)((l) + ((idx) ^ 0x20)), vaddq_u64(chunk1, vreinterpretq_u64_u8(bx0))); \
+    vst1q_u64((uint64_t*)((l) + ((idx) ^ 0x30)), vaddq_u64(chunk2, vreinterpretq_u64_u8(ax))); \
 }
 
 
@@ -655,7 +655,7 @@ public:
         uint64_t al[NUM_HASH_BLOCKS];
         uint64_t ah[NUM_HASH_BLOCKS];
         uint64_t idx[NUM_HASH_BLOCKS];
-        __m128i bx0[NUM_HASH_BLOCKS];
+        __m128i bx[NUM_HASH_BLOCKS];
         __m128i cx[NUM_HASH_BLOCKS];
         __m128i ax[NUM_HASH_BLOCKS];
 
@@ -672,7 +672,7 @@ public:
 
             al[hashBlock] = h[hashBlock][0] ^ h[hashBlock][4];
             ah[hashBlock] = h[hashBlock][1] ^ h[hashBlock][5];
-            bx0[hashBlock] = _mm_set_epi64x(h[hashBlock][3] ^ h[hashBlock][7], h[hashBlock][2] ^ h[hashBlock][6]);
+            bx[hashBlock] = _mm_set_epi64x(h[hashBlock][3] ^ h[hashBlock][7], h[hashBlock][2] ^ h[hashBlock][6]);
             idx[hashBlock] = h[hashBlock][0] ^ h[hashBlock][4];
         }
 
@@ -681,17 +681,16 @@ public:
                 ax[hashBlock] = _mm_set_epi64x(ah[hashBlock], al[hashBlock]);
 
                 if (SOFT_AES) {
-                    cx[hashBlock] = soft_aesenc((uint32_t *) &l[hashBlock][idx[hashBlock] & MASK],
-                                                _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = soft_aesenc((uint32_t *) &l[hashBlock][idx[hashBlock] & MASK], ax[hashBlock]);
                 } else {
                     cx[hashBlock] = _mm_load_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK]);
-                    cx[hashBlock] = _mm_aesenc_si128(cx[hashBlock], _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = _mm_aesenc_si128(cx[hashBlock], ax[hashBlock]);
                 }
             }
 
             for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
                 _mm_store_si128((__m128i*) &l[hashBlock][idx[hashBlock] & MASK],
-                                _mm_xor_si128(bx[hashBlock], cx));
+                                _mm_xor_si128(bx[hashBlock], cx[hashBlock]));
             }
 
             for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
@@ -714,7 +713,7 @@ public:
                 al[hashBlock] ^= cl;
                 idx[hashBlock] = al[hashBlock];
 
-                bx0[hashBlock] = cx[hashBlock];
+                bx[hashBlock] = cx[hashBlock];
             }
         }
 
@@ -762,29 +761,34 @@ public:
 
         for (size_t i = 0; i < ITERATIONS; i++) {
             for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                ax[hashBlock] = _mm_set_epi64x(ah[hashBlock], al[hashBlock]);
+
                 if (SOFT_AES) {
-                    cx[hashBlock] = soft_aesenc((uint32_t *) &l[hashBlock][idx[hashBlock] & MASK],
-                                                _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = soft_aesenc((uint32_t *) &l[hashBlock][idx[hashBlock] & MASK], ax[hashBlock]);
                 } else {
                     cx[hashBlock] = _mm_load_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK]);
-                    cx[hashBlock] = _mm_aesenc_si128(cx[hashBlock], _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = _mm_aesenc_si128(cx[hashBlock], ax[hashBlock]);
                 }
             }
 
             for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
                 _mm_store_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK],
-                                _mm_xor_si128(bx[hashBlock], cx));
+                                _mm_xor_si128(bx[hashBlock], cx[hashBlock]));
             }
 
-            uint64_t hi, lo, cl, ch;
             for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
                 const uint8_t tmp = reinterpret_cast<const uint8_t *>(&l[hashBlock][idx[hashBlock] & MASK])[11];
                 static const uint32_t table = 0x75310;
                 const uint8_t index = (((tmp >> INDEX_SHIFT) & 6) | (tmp & 1)) << 1;
                 ((uint8_t *) (&l[hashBlock][idx[hashBlock] & MASK]))[11] = tmp ^ ((table >> index) & 0x30);
+            }
 
-                idx[hashBlock] = EXTRACT64(cx);
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                idx[hashBlock] = EXTRACT64(cx[hashBlock]);
+            }
 
+            uint64_t hi, lo, cl, ch;
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
                 cl = ((uint64_t *) &l[hashBlock][idx[hashBlock] & MASK])[0];
                 ch = ((uint64_t *) &l[hashBlock][idx[hashBlock] & MASK])[1];
                 lo = __umul128(idx[hashBlock], cl, &hi);
@@ -827,9 +831,9 @@ public:
         uint64_t ah[NUM_HASH_BLOCKS];
         uint64_t idx[NUM_HASH_BLOCKS];
         uint64_t sqrt_result[NUM_HASH_BLOCKS];
+        uint64_t division_result_xmm[NUM_HASH_BLOCKS];
         __m128i bx0[NUM_HASH_BLOCKS];
         __m128i bx1[NUM_HASH_BLOCKS];
-        __m128i division_result_xmm[NUM_HASH_BLOCKS];
         __m128i cx[NUM_HASH_BLOCKS];
         __m128i ax[NUM_HASH_BLOCKS];
 
@@ -850,25 +854,22 @@ public:
             bx1[hashBlock] = _mm_set_epi64x(h[hashBlock][9] ^ h[hashBlock][11], h[hashBlock][8] ^ h[hashBlock][10]);
             idx[hashBlock] = h[hashBlock][0] ^ h[hashBlock][4];
 
-            division_result_xmm[hashBlock] = _mm_cvtsi64_si128(h[hashBlock][12]);
+            division_result_xmm[hashBlock] = h[hashBlock][12];
             sqrt_result[hashBlock] = h[hashBlock][13];
         }
 
-        SET_ROUNDING_MODE_UP();
-
         uint64_t sqrt_result0;
-        __m128i division_result_xmm0;
+        uint64_t division_result_xmm0;
 
         for (size_t i = 0; i < ITERATIONS; i++) {
             for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
                 ax[hashBlock] = _mm_set_epi64x(ah[hashBlock], al[hashBlock]);
 
                 if (SOFT_AES) {
-                    cx[hashBlock] = soft_aesenc((uint32_t *) &l[hashBlock][idx[hashBlock] & MASK],
-                                     _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = soft_aesenc((uint32_t *) &l[hashBlock][idx[hashBlock] & MASK], ax[hashBlock]);
                 } else {
                     cx[hashBlock] = _mm_load_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK]);
-                    cx[hashBlock] = _mm_aesenc_si128(cx[hashBlock], _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = _mm_aesenc_si128(cx[hashBlock], ax[hashBlock]);
                 }
             }
 
@@ -878,7 +879,7 @@ public:
 
             for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
                 _mm_store_si128((__m128i*) &l[hashBlock][idx[hashBlock] & MASK],
-                                _mm_xor_si128(bx[hashBlock], cx));
+                                _mm_xor_si128(bx0[hashBlock], cx[hashBlock]));
             }
 
             for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
