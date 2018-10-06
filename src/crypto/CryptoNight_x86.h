@@ -4907,7 +4907,7 @@ public:
         extra_hashes[scratchPad[4]->state[0] & 3](scratchPad[4]->state, 200, output + 128);
     }
 
-    // quintruple
+    // quintuple
     inline static void hashPowV3(const uint8_t* __restrict__ input,
                             size_t size,
                             uint8_t* __restrict__ output,
@@ -5031,11 +5031,9 @@ public:
             idx3 = EXTRACT64(cx3);
             idx4 = EXTRACT64(cx4);
 
-
             uint64_t hi, lo, cl, ch;
             cl = ((uint64_t*) &l0[idx0 & MASK])[0];
             ch = ((uint64_t*) &l0[idx0 & MASK])[1];
-
 
             INTEGER_MATH_V2(0, cl, cx0);
 
