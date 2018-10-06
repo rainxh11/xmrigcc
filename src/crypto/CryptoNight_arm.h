@@ -2045,19 +2045,18 @@ public:
         uint64_t idx0 = h0[0] ^h0[4];
         uint64_t idx1 = h1[0] ^h1[4];
 
-        __m128i division_result_xmm0 = _mm_cvtsi64_si128(h0[12]);
-        __m128i division_result_xmm1 = _mm_cvtsi64_si128(h1[12]);
+        uint64_t division_result_xmm0 = h0[12];
+        uint64_t division_result_xmm1 = h1[12];
 
-        uint64_t sqrt_result0 =  h0[13];
-        uint64_t sqrt_result1 =  h1[13];
+        uint64_t sqrt_result0 = h0[13];
+        uint64_t sqrt_result1 = h1[13];
 
         for (size_t i = 0; i < ITERATIONS; i++) {
+            const __m128i ax0 = _mm_set_epi64x(ah0, al0);
+            const __m128i ax1 = _mm_set_epi64x(ah1, al1);
+
             __m128i cx0;
             __m128i cx1;
-
-            const __m128 ax0 = _mm_set_epi64x(ah0, al0);
-            const __m128 ax1 = _mm_set_epi64x(ah1, al1);
-
             if (SOFT_AES) {
                 cx0 = soft_aesenc((uint32_t*) &l0[idx0 & MASK], ax0);
                 cx1 = soft_aesenc((uint32_t*) &l1[idx1 & MASK], ax1);
@@ -4997,7 +4996,7 @@ public:
     }
 
     // quintuple
-    inline static void hash(const uint8_t* __restrict__ input,
+    inline static void hashPowV3(const uint8_t* __restrict__ input,
                             size_t size,
                             uint8_t* __restrict__ output,
                             ScratchPad** __restrict__ scratchPad)
@@ -5516,6 +5515,5 @@ public:
         // not supported
     }
 };
-*/
 
 #endif /* __CRYPTONIGHT_ARM_H__ */
