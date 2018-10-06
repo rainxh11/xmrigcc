@@ -255,6 +255,7 @@ bool CryptoNight::selfTest(int algo)
         cryptonight_hash_ctx[2](PowVariant::POW_TUBE, test_input, 76, output, scratchPads);
         resultHeavy = resultHeavy && memcmp(output, test_output_heavy_tube, 96) == 0;
         #endif
+
     } else if (algo == Options::ALGO_CRYPTONIGHT_LITE) {
         // cn-lite v0
 

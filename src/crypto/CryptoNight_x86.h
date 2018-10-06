@@ -564,8 +564,10 @@ public:
         uint64_t* h[NUM_HASH_BLOCKS];
         uint64_t al[NUM_HASH_BLOCKS];
         uint64_t ah[NUM_HASH_BLOCKS];
-        __m128i bx[NUM_HASH_BLOCKS];
         uint64_t idx[NUM_HASH_BLOCKS];
+        __m128i bx[NUM_HASH_BLOCKS];
+        __m128i cx[NUM_HASH_BLOCKS];
+        __m128i ax[NUM_HASH_BLOCKS];
 
         for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
             keccak(static_cast<const uint8_t*>(input) + hashBlock * size, (int) size, scratchPad[hashBlock]->state, 200);
@@ -585,22 +587,27 @@ public:
 
         for (size_t i = 0; i < ITERATIONS; i++) {
             for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
-                __m128i cx;
+                ax[hashBlock] = _mm_set_epi64x(ah[hashBlock], al[hashBlock]);
 
                 if (SOFT_AES) {
-                    cx = soft_aesenc((uint32_t*) &l[hashBlock][idx[hashBlock] & MASK], _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = soft_aesenc((uint32_t *) &l[hashBlock][idx[hashBlock] & MASK], ax[hashBlock]);
                 } else {
-                    cx = _mm_load_si128((__m128i*) &l[hashBlock][idx[hashBlock] & MASK]);
-                    cx = _mm_aesenc_si128(cx, _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = _mm_load_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK]);
+                    cx[hashBlock] = _mm_aesenc_si128(cx[hashBlock], ax[hashBlock]);
                 }
+            }
 
-                _mm_store_si128((__m128i*) &l[hashBlock][idx[hashBlock] & MASK],
-                                _mm_xor_si128(bx[hashBlock], cx));
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                _mm_store_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK],
+                                _mm_xor_si128(bx[hashBlock], cx[hashBlock]));
+            }
 
-                idx[hashBlock] = EXTRACT64(cx);
-                bx[hashBlock] = cx;
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                idx[hashBlock] = EXTRACT64(cx[hashBlock]);
+            }
 
-                uint64_t hi, lo, cl, ch;
+            uint64_t hi, lo, cl, ch;
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
                 cl = ((uint64_t*) &l[hashBlock][idx[hashBlock] & MASK])[0];
                 ch = ((uint64_t*) &l[hashBlock][idx[hashBlock] & MASK])[1];
                 lo = __umul128(idx[hashBlock], cl, &hi);
@@ -614,6 +621,8 @@ public:
                 ah[hashBlock] ^= ch;
                 al[hashBlock] ^= cl;
                 idx[hashBlock] = al[hashBlock];
+
+                bx[hashBlock] = cx[hashBlock];
             }
         }
 
@@ -634,9 +643,11 @@ public:
         uint64_t* h[NUM_HASH_BLOCKS];
         uint64_t al[NUM_HASH_BLOCKS];
         uint64_t ah[NUM_HASH_BLOCKS];
-        __m128i bx[NUM_HASH_BLOCKS];
         uint64_t idx[NUM_HASH_BLOCKS];
         uint64_t tweak1_2[NUM_HASH_BLOCKS];
+        __m128i bx[NUM_HASH_BLOCKS];
+        __m128i cx[NUM_HASH_BLOCKS];
+        __m128i ax[NUM_HASH_BLOCKS];
 
         for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
             keccak(static_cast<const uint8_t*>(input) + hashBlock * size, (int) size, scratchPad[hashBlock]->state, 200);
@@ -658,26 +669,33 @@ public:
 
         for (size_t i = 0; i < ITERATIONS; i++) {
             for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
-                __m128i cx;
+                ax[hashBlock] = _mm_set_epi64x(ah[hashBlock], al[hashBlock]);
 
                 if (SOFT_AES) {
-                    cx = soft_aesenc((uint32_t*) &l[hashBlock][idx[hashBlock] & MASK], _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = soft_aesenc((uint32_t *) &l[hashBlock][idx[hashBlock] & MASK], ax[hashBlock]);
                 } else {
-                    cx = _mm_load_si128((__m128i*) &l[hashBlock][idx[hashBlock] & MASK]);
-                    cx = _mm_aesenc_si128(cx, _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = _mm_load_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK]);
+                    cx[hashBlock] = _mm_aesenc_si128(cx[hashBlock], ax[hashBlock]);
                 }
+            }
 
-                _mm_store_si128((__m128i*) &l[hashBlock][idx[hashBlock] & MASK], _mm_xor_si128(bx[hashBlock], cx));
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                _mm_store_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK], _mm_xor_si128(bx[hashBlock], cx[hashBlock]));
+            }
 
-                const uint8_t tmp = reinterpret_cast<const uint8_t*>(&l[hashBlock][idx[hashBlock] & MASK])[11];
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                const uint8_t tmp = reinterpret_cast<const uint8_t *>(&l[hashBlock][idx[hashBlock] & MASK])[11];
                 static const uint32_t table = 0x75310;
                 const uint8_t index = (((tmp >> INDEX_SHIFT) & 6) | (tmp & 1)) << 1;
-                ((uint8_t*)(&l[hashBlock][idx[hashBlock] & MASK]))[11] = tmp ^ ((table >> index) & 0x30);
+                ((uint8_t *) (&l[hashBlock][idx[hashBlock] & MASK]))[11] = tmp ^ ((table >> index) & 0x30);
+            }
 
-                idx[hashBlock] = EXTRACT64(cx);
-                bx[hashBlock] = cx;
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                idx[hashBlock] = EXTRACT64(cx[hashBlock]);
+            }
 
-                uint64_t hi, lo, cl, ch;
+            uint64_t hi, lo, cl, ch;
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
                 cl = ((uint64_t*) &l[hashBlock][idx[hashBlock] & MASK])[0];
                 ch = ((uint64_t*) &l[hashBlock][idx[hashBlock] & MASK])[1];
                 lo = __umul128(idx[hashBlock], cl, &hi);
@@ -695,6 +713,8 @@ public:
                 ah[hashBlock] ^= ch;
                 al[hashBlock] ^= cl;
                 idx[hashBlock] = al[hashBlock];
+
+                bx[hashBlock] = cx[hashBlock];
             }
         }
 
@@ -720,9 +740,9 @@ public:
         uint64_t sqrt_result[NUM_HASH_BLOCKS];
         __m128i bx0[NUM_HASH_BLOCKS];
         __m128i bx1[NUM_HASH_BLOCKS];
-        __m128i division_result_xmm[NUM_HASH_BLOCKS];
         __m128i cx[NUM_HASH_BLOCKS];
         __m128i ax[NUM_HASH_BLOCKS];
+        __m128i division_result_xmm[NUM_HASH_BLOCKS];
 
         for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
             keccak(static_cast<const uint8_t*>(input) + hashBlock * size, (int) size, scratchPad[hashBlock]->state, 200);
@@ -823,9 +843,11 @@ public:
         uint64_t* h[NUM_HASH_BLOCKS];
         uint64_t al[NUM_HASH_BLOCKS];
         uint64_t ah[NUM_HASH_BLOCKS];
-        __m128i bx[NUM_HASH_BLOCKS];
         uint64_t idx[NUM_HASH_BLOCKS];
         uint64_t tweak1_2[NUM_HASH_BLOCKS];
+        __m128i bx[NUM_HASH_BLOCKS];
+        __m128i cx[NUM_HASH_BLOCKS];
+        __m128i ax[NUM_HASH_BLOCKS];
 
         for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
             keccak(static_cast<const uint8_t*>(input) + hashBlock * size, (int) size, scratchPad[hashBlock]->state, 200);
@@ -841,34 +863,40 @@ public:
 
             al[hashBlock] = h[hashBlock][0] ^ h[hashBlock][4];
             ah[hashBlock] = h[hashBlock][1] ^ h[hashBlock][5];
-            bx[hashBlock] =
-                    _mm_set_epi64x(h[hashBlock][3] ^ h[hashBlock][7], h[hashBlock][2] ^ h[hashBlock][6]);
+            bx[hashBlock] = _mm_set_epi64x(h[hashBlock][3] ^ h[hashBlock][7], h[hashBlock][2] ^ h[hashBlock][6]);
             idx[hashBlock] = h[hashBlock][0] ^ h[hashBlock][4];
         }
 
         for (size_t i = 0; i < ITERATIONS; i++) {
             for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
-                __m128i cx;
+                ax[hashBlock] = _mm_set_epi64x(ah[hashBlock], al[hashBlock]);
 
                 if (SOFT_AES) {
-                    cx = soft_aesenc((uint32_t*) &l[hashBlock][idx[hashBlock] & MASK], _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = soft_aesenc((uint32_t *) &l[hashBlock][idx[hashBlock] & MASK], ax[hashBlock]);
                 } else {
-                    cx = _mm_load_si128((__m128i*) &l[hashBlock][idx[hashBlock] & MASK]);
-                    cx = _mm_aesenc_si128(cx, _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = _mm_load_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK]);
+                    cx[hashBlock] = _mm_aesenc_si128(cx[hashBlock], ax[hashBlock]);
                 }
+            }
 
-                _mm_store_si128((__m128i*) &l[hashBlock][idx[hashBlock] & MASK],
-                                _mm_xor_si128(bx[hashBlock], cx));
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                _mm_store_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK],
+                                _mm_xor_si128(bx[hashBlock], cx[hashBlock]));
+            }
 
-                const uint8_t tmp = reinterpret_cast<const uint8_t*>(&l[hashBlock][idx[hashBlock] & MASK])[11];
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                const uint8_t tmp = reinterpret_cast<const uint8_t *>(&l[hashBlock][idx[hashBlock] & MASK])[11];
                 static const uint32_t table = 0x75310;
                 const uint8_t index = (((tmp >> INDEX_SHIFT) & 6) | (tmp & 1)) << 1;
-                ((uint8_t*)(&l[hashBlock][idx[hashBlock] & MASK]))[11] = tmp ^ ((table >> index) & 0x30);
+                ((uint8_t *) (&l[hashBlock][idx[hashBlock] & MASK]))[11] = tmp ^ ((table >> index) & 0x30);
+            }
 
-                idx[hashBlock] = EXTRACT64(cx);
-                bx[hashBlock] = cx;
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                idx[hashBlock] = EXTRACT64(cx[hashBlock]);
+            }
 
-                uint64_t hi, lo, cl, ch;
+            uint64_t hi, lo, cl, ch;
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
                 cl = ((uint64_t*) &l[hashBlock][idx[hashBlock] & MASK])[0];
                 ch = ((uint64_t*) &l[hashBlock][idx[hashBlock] & MASK])[1];
                 lo = __umul128(idx[hashBlock], cl, &hi);
@@ -888,6 +916,8 @@ public:
                 ah[hashBlock] ^= ch;
                 al[hashBlock] ^= cl;
                 idx[hashBlock] = al[hashBlock];
+
+                bx[hashBlock] = cx[hashBlock];
             }
         }
 
@@ -908,8 +938,10 @@ public:
         uint64_t* h[NUM_HASH_BLOCKS];
         uint64_t al[NUM_HASH_BLOCKS];
         uint64_t ah[NUM_HASH_BLOCKS];
-        __m128i bx[NUM_HASH_BLOCKS];
         uint64_t idx[NUM_HASH_BLOCKS];
+        __m128i bx[NUM_HASH_BLOCKS];
+        __m128i cx[NUM_HASH_BLOCKS];
+        __m128i ax[NUM_HASH_BLOCKS];
 
         for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
             keccak(static_cast<const uint8_t*>(input) + hashBlock * size, (int) size, scratchPad[hashBlock]->state, 200);
@@ -929,22 +961,27 @@ public:
 
         for (size_t i = 0; i < ITERATIONS; i++) {
             for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
-                __m128i cx;
+                ax[hashBlock] = _mm_set_epi64x(ah[hashBlock], al[hashBlock]);
 
                 if (SOFT_AES) {
-                    cx = soft_aesenc((uint32_t*) &l[hashBlock][idx[hashBlock] & MASK], _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = soft_aesenc((uint32_t *) &l[hashBlock][idx[hashBlock] & MASK], ax[hashBlock]);
                 } else {
-                    cx = _mm_load_si128((__m128i*) &l[hashBlock][idx[hashBlock] & MASK]);
-                    cx = _mm_aesenc_si128(cx, _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = _mm_load_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK]);
+                    cx[hashBlock] = _mm_aesenc_si128(cx[hashBlock], ax[hashBlock]);
                 }
+            }
 
-                _mm_store_si128((__m128i*) &l[hashBlock][idx[hashBlock] & MASK],
-                                _mm_xor_si128(bx[hashBlock], cx));
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                _mm_store_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK],
+                                _mm_xor_si128(bx[hashBlock], cx[hashBlock]));
+            }
 
-                idx[hashBlock] = EXTRACT64(cx);
-                bx[hashBlock] = cx;
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                idx[hashBlock] = EXTRACT64(cx[hashBlock]);
+            }
 
-                uint64_t hi, lo, cl, ch;
+            uint64_t hi, lo, cl, ch;
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
                 cl = ((uint64_t*) &l[hashBlock][idx[hashBlock] & MASK])[0];
                 ch = ((uint64_t*) &l[hashBlock][idx[hashBlock] & MASK])[1];
                 lo = __umul128(idx[hashBlock], cl, &hi);
@@ -965,6 +1002,8 @@ public:
 
                 ((int64_t*)&l[hashBlock][idx[hashBlock] & MASK])[0] = n ^ q;
                 idx[hashBlock] = d ^ q;
+
+                bx[hashBlock] = cx[hashBlock];
             }
         }
 
@@ -972,7 +1011,7 @@ public:
             cn_implode_scratchpad_heavy<MEM, SOFT_AES>((__m128i*) l[hashBlock], (__m128i*) h[hashBlock]);
             keccakf(h[hashBlock], 24);
             extra_hashes[scratchPad[hashBlock]->state[0] & 3](scratchPad[hashBlock]->state, 200,
-                                                       output + hashBlock * 32);
+                                                              output + hashBlock * 32);
         }
     }
 
@@ -985,8 +1024,10 @@ public:
         uint64_t* h[NUM_HASH_BLOCKS];
         uint64_t al[NUM_HASH_BLOCKS];
         uint64_t ah[NUM_HASH_BLOCKS];
-        __m128i bx[NUM_HASH_BLOCKS];
         uint64_t idx[NUM_HASH_BLOCKS];
+        __m128i bx[NUM_HASH_BLOCKS];
+        __m128i cx[NUM_HASH_BLOCKS];
+        __m128i ax[NUM_HASH_BLOCKS];
 
         for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
             keccak(static_cast<const uint8_t*>(input) + hashBlock * size, (int) size, scratchPad[hashBlock]->state, 200);
@@ -1006,22 +1047,27 @@ public:
 
         for (size_t i = 0; i < ITERATIONS; i++) {
             for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
-                __m128i cx;
+                ax[hashBlock] = _mm_set_epi64x(ah[hashBlock], al[hashBlock]);
 
                 if (SOFT_AES) {
-                    cx = soft_aesenc((uint32_t*) &l[hashBlock][idx[hashBlock] & MASK], _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = soft_aesenc((uint32_t *) &l[hashBlock][idx[hashBlock] & MASK], ax[hashBlock]);
                 } else {
-                    cx = _mm_load_si128((__m128i*) &l[hashBlock][idx[hashBlock] & MASK]);
-                    cx = _mm_aesenc_si128(cx, _mm_set_epi64x(ah[hashBlock], al[hashBlock]));
+                    cx[hashBlock] = _mm_load_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK]);
+                    cx[hashBlock] = _mm_aesenc_si128(cx[hashBlock], ax[hashBlock]);
                 }
+            }
 
-                _mm_store_si128((__m128i*) &l[hashBlock][idx[hashBlock] & MASK],
-                                _mm_xor_si128(bx[hashBlock], cx));
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                _mm_store_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK],
+                                _mm_xor_si128(bx[hashBlock], cx[hashBlock]));
+            }
 
-                idx[hashBlock] = EXTRACT64(cx);
-                bx[hashBlock] = cx;
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                idx[hashBlock] = EXTRACT64(cx[hashBlock]);
+            }
 
-                uint64_t hi, lo, cl, ch;
+            uint64_t hi, lo, cl, ch;
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
                 cl = ((uint64_t*) &l[hashBlock][idx[hashBlock] & MASK])[0];
                 ch = ((uint64_t*) &l[hashBlock][idx[hashBlock] & MASK])[1];
                 lo = __umul128(idx[hashBlock], cl, &hi);
@@ -1042,6 +1088,8 @@ public:
 
                 ((int64_t*)&l[hashBlock][idx[hashBlock] & MASK])[0] = n ^ q;
                 idx[hashBlock] = (~d) ^ q;
+
+                bx[hashBlock] = cx[hashBlock];
             }
         }
 
@@ -1062,9 +1110,10 @@ public:
         uint64_t* h[NUM_HASH_BLOCKS];
         uint64_t al[NUM_HASH_BLOCKS];
         uint64_t ah[NUM_HASH_BLOCKS];
-        __m128i bx[NUM_HASH_BLOCKS];
         uint64_t idx[NUM_HASH_BLOCKS];
         uint64_t tweak1_2[NUM_HASH_BLOCKS];
+        __m128i bx[NUM_HASH_BLOCKS];
+        __m128i cx[NUM_HASH_BLOCKS];
 
         for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
             keccak(static_cast<const uint8_t*>(input) + hashBlock * size, (int) size, scratchPad[hashBlock]->state, 200);
@@ -1094,36 +1143,48 @@ public:
 
         for (size_t i = 0; i < ITERATIONS; i++) {
             for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
-                __m128i cx;
+                cx[hashBlock] = _mm_load_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK]);
+            }
 
-                cx = _mm_load_si128((__m128i*) &l[hashBlock][idx[hashBlock] & MASK]);
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                const __m128i &key = _mm_set_epi64x(ah[hashBlock], al[hashBlock]);
 
-                const __m128i& key = _mm_set_epi64x(ah[hashBlock], al[hashBlock]);
+                _mm_store_si128((__m128i *) k, key);
+                cx[hashBlock] = _mm_xor_si128(cx[hashBlock], _mm_cmpeq_epi32(_mm_setzero_si128(), _mm_setzero_si128()));
+                _mm_store_si128((__m128i *) x, cx[hashBlock]);
 
-                _mm_store_si128((__m128i*)k, key);
-                cx = _mm_xor_si128(cx, _mm_cmpeq_epi32(_mm_setzero_si128(), _mm_setzero_si128()));
-                _mm_store_si128((__m128i*)x, cx);
-
-                k[0] ^= saes_table[0][BYTE(x[0], 0)] ^ saes_table[1][BYTE(x[1], 1)] ^ saes_table[2][BYTE(x[2], 2)] ^ saes_table[3][BYTE(x[3], 3)];
+                k[0] ^= saes_table[0][BYTE(x[0], 0)] ^ saes_table[1][BYTE(x[1], 1)] ^ saes_table[2][BYTE(x[2], 2)] ^
+                        saes_table[3][BYTE(x[3], 3)];
                 x[0] ^= k[0];
-                k[1] ^= saes_table[0][BYTE(x[1], 0)] ^ saes_table[1][BYTE(x[2], 1)] ^ saes_table[2][BYTE(x[3], 2)] ^ saes_table[3][BYTE(x[0], 3)];
+                k[1] ^= saes_table[0][BYTE(x[1], 0)] ^ saes_table[1][BYTE(x[2], 1)] ^ saes_table[2][BYTE(x[3], 2)] ^
+                        saes_table[3][BYTE(x[0], 3)];
                 x[1] ^= k[1];
-                k[2] ^= saes_table[0][BYTE(x[2], 0)] ^ saes_table[1][BYTE(x[3], 1)] ^ saes_table[2][BYTE(x[0], 2)] ^ saes_table[3][BYTE(x[1], 3)];
+                k[2] ^= saes_table[0][BYTE(x[2], 0)] ^ saes_table[1][BYTE(x[3], 1)] ^ saes_table[2][BYTE(x[0], 2)] ^
+                        saes_table[3][BYTE(x[1], 3)];
                 x[2] ^= k[2];
-                k[3] ^= saes_table[0][BYTE(x[3], 0)] ^ saes_table[1][BYTE(x[0], 1)] ^ saes_table[2][BYTE(x[1], 2)] ^ saes_table[3][BYTE(x[2], 3)];
+                k[3] ^= saes_table[0][BYTE(x[3], 0)] ^ saes_table[1][BYTE(x[0], 1)] ^ saes_table[2][BYTE(x[1], 2)] ^
+                        saes_table[3][BYTE(x[2], 3)];
 
-                cx = _mm_load_si128((__m128i*)k);
+                cx[hashBlock] = _mm_load_si128((__m128i *) k);
+            }
 
-                _mm_store_si128((__m128i*) &l[hashBlock][idx[hashBlock] & MASK], _mm_xor_si128(bx[hashBlock], cx));
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                _mm_store_si128((__m128i *) &l[hashBlock][idx[hashBlock] & MASK],
+                                _mm_xor_si128(bx[hashBlock], cx[hashBlock]));
+            }
 
-                const uint8_t tmp = reinterpret_cast<const uint8_t*>(&l[hashBlock][idx[hashBlock] & MASK])[11];
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                const uint8_t tmp = reinterpret_cast<const uint8_t *>(&l[hashBlock][idx[hashBlock] & MASK])[11];
                 static const uint32_t table = 0x75310;
                 const uint8_t index = (((tmp >> INDEX_SHIFT) & 6) | (tmp & 1)) << 1;
-                ((uint8_t*)(&l[hashBlock][idx[hashBlock] & MASK]))[11] = tmp ^ ((table >> index) & 0x30);
+                ((uint8_t *) (&l[hashBlock][idx[hashBlock] & MASK]))[11] = tmp ^ ((table >> index) & 0x30);
+            }
 
-                idx[hashBlock] = EXTRACT64(cx);
-                bx[hashBlock] = cx;
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
+                idx[hashBlock] = EXTRACT64(cx[hashBlock]);
+            }
 
+            for (size_t hashBlock = 0; hashBlock < NUM_HASH_BLOCKS; ++hashBlock) {
                 uint64_t hi, lo, cl, ch;
                 cl = ((uint64_t*) &l[hashBlock][idx[hashBlock] & MASK])[0];
                 ch = ((uint64_t*) &l[hashBlock][idx[hashBlock] & MASK])[1];
@@ -1151,6 +1212,8 @@ public:
 
                 ((int64_t*)&l[hashBlock][idx[hashBlock] & MASK])[0] = n ^ q;
                 idx[hashBlock] = d ^ q;
+
+                bx[hashBlock] = cx[hashBlock];
             }
         }
 
