@@ -38,7 +38,7 @@
 #define POW_XLT_V4_INDEX_SHIFT 4
 
 struct ScratchPad {
-    alignas(16) uint8_t state[208]; // 208 instead of 200 to maintain aligned to 16 byte boundaries
+    alignas(16) uint8_t state[224]; // 208 instead of 200 to maintain aligned to 16 byte boundaries
     alignas(16) uint8_t* memory;
 };
 

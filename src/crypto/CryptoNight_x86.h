@@ -48,6 +48,15 @@ extern "C"
 #include "crypto/c_blake256.h"
 #include "crypto/c_jh.h"
 #include "crypto/c_skein.h"
+
+#ifndef XMRIG_NO_ASM
+void cnv1_mainloop_sandybridge_asm(ScratchPad* ctx0);
+void cnv2_mainloop_ivybridge_asm(ScratchPad* ctx0);
+void cnv2_mainloop_ryzen_asm(ScratchPad* ctx0);
+void cnv2_double_mainloop_sandybridge_asm(ScratchPad* ctx0, ScratchPad* ctx1);
+void cnv1_mainloop_soft_aes_sandybridge_asm(ScratchPad* ctx0);
+void cnv2_mainloop_soft_aes_sandybridge_asm(ScratchPad* ctx0);
+#endif
 }
 
 #ifdef __GNUC__
@@ -58,6 +67,10 @@ extern "C"
 #define UNLIKELY(X) X
 #endif
 
+extern "C"
+{
+
+}
 
 #if defined(__x86_64__) || defined(_M_AMD64)
 #   define EXTRACT64(X) _mm_cvtsi128_si64(X)
@@ -834,6 +847,14 @@ public:
         }
     }
 
+    inline static void hashPowV3_asm(const uint8_t* __restrict__ input,
+                                 size_t size,
+                                 uint8_t* __restrict__ output,
+                                 ScratchPad** __restrict__ scratchPad)
+    {
+        // not supported
+    }
+
     inline static void hashLiteTube(const uint8_t* __restrict__ input,
                                     size_t size,
                                     uint8_t* __restrict__ output,
@@ -1430,6 +1451,27 @@ public:
         keccakf(h, 24);
         extra_hashes[scratchPad[0]->state[0] & 3](scratchPad[0]->state, 200, output);
     }
+
+    ALIGN(64) uint8_t variant1_table[256];
+
+    inline static void hashPowV3_asm(const uint8_t* __restrict__ input,
+                                     size_t size,
+                                     uint8_t* __restrict__ output,
+                                     ScratchPad** __restrict__ scratchPad)
+    {
+        const uint8_t* l = scratchPad[0]->memory;
+        uint64_t* h = reinterpret_cast<uint64_t*>(scratchPad[0]->state);
+
+        keccak(static_cast<const uint8_t*>(input), (int) size, scratchPad[0]->state, 200);
+        cn_explode_scratchpad<MEM, SOFT_AES>((__m128i*) h, (__m128i*) l);
+
+        cnv1_mainloop_sandybridge_asm(scratchPad);
+
+        cn_implode_scratchpad<MEM, SOFT_AES>((__m128i*) l, (__m128i*) h);
+        keccakf(h, 24);
+        extra_hashes[scratchPad[0]->state[0] & 3](scratchPad[0]->state, 200, output);
+    }
+
 
     inline static void hashLiteTube(const uint8_t* __restrict__ input,
                                  size_t size,
