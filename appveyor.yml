@@ -15,23 +15,26 @@ configuration: Release
 clone_folder: c:\xmrigCC
 
 install:
-  - mkdir c:\xmrigCC-deps
-  - curl -sL https://github.com/Bendr0id/xmrigCC-deps/releases/download/v2/xmrigCC-deps.zip -o xmrigCC-deps.zip
-  - 7z x xmrigCC-deps.zip -o"c:\xmrigCC-deps" -y > nul
+  - appveyor DownloadFile https://dl.bintray.com/boostorg/release/1.68.0/binaries/boost_1_68_0-msvc-14.1-64.exe -FileName boost_1_68_0-msvc-14.1-64.exe
+  - boost_1_68_0-msvc-14.1-64.exe /VERYSILENT /DIR="C:\boost_1_68_0"
+  - appveyor DownloadFile  https://www.python.org/ftp/python/2.7.15/python-2.7.15.amd64.msi -FileName python-2.7.15.amd64.msi
+  - msiexec /qn /i python-2.7.15.amd64.msi 
+  - set PYTHON=C:\Python27\python.exe
+  - git clone https://github.com/libuv/libuv c:\libuv
 
 build_script:
+  - cd c:\libuv
+  - call vcbuild.bat release vs2017 x64 static
   - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\VsMSBuildCmd.bat"
   - cd c:\xmrigCC
   - mkdir build
   - cd build
-  - set CMAKE_PREFIX_PATH=c:\xmrigCC-deps\msvc2017\libuv\x64\;c:\xmrigCC-deps\msvc2017\libmicrohttpd\x64\;c:\xmrigCC-deps\msvc2017\openssl\x64\
-  - cmake -G "Visual Studio 15 2017 Win64" -T v141,host=x64 .. -DBOOST_ROOT=C:\Libraries\boost_1_66_0
+  - cmake -G "Visual Studio 15 2017 Win64" -T v141,host=x64 .. -DUV_INCLUDE_DIR="c:\libuv\include" -DUV_LIBRARY="c:\libuv\Release\lib\libuv.lib" -DBOOST_ROOT=C:\boost_1_68_0
   - msbuild xmrig.sln /p:Configuration=Release
 
 after_build:
-- cd c:\xmrigCC
-- cmd: 7z a xmrigCC-mvc-win64.zip "c:\xmrigCC\build\Release\*.exe" "c:\xmrigCC\src\*config*" "c:\xmrigCC\index.html"
-- cmd: dir
+- ps: | # package artifacts
+    7z a -m0=LZMA2 -mx9 c:\xmrigCC\xmrigCC-msvc-win64.7z c:\xmrigCC\build\Release\*
 
 artifacts:
-- path: xmrigCC-mvc-win64.zip
+- path: xmrigCC-msvc-win64.7z
